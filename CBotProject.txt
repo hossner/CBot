@@ -1,0 +1,47 @@
+So... I decided to see if I could build myself a robot. I've been thinking about it for a while, but haven't really had the time, or - to be totally honest - haven't made the time. And I haven't done anything like it before either, so I didn't have a clue of how to begin...
+
+After giving it some thought, I decided I wanted it to be more of a combination of a drone and an autonomous robot. The reason being that I realised that it would be difficult to have all the computational power within the robot itself. It would have to have a "secondary brain" in the form of a server, connected via wifi. That meant it would have to handle delays in the communication with the server, and even losing the connection all together. And if that happened I wanted it to be able to fall back to a more primitive set of functions. And I wanted it to be able to stay in unattended activity for long periods of time, hoping it would be able to be "always on", instead of it being something that had to be actively played with.
+
+That meant that the robot had to be able to move between four different "modes":
+Mode 0: Shut down, or stopped with no possibility to move to another mode
+Mode 1: Hibernating. E.g. for power saving or when charging
+Mode 1: Autonumous. All decision making done in the robot, but trying to connect to the server with certain intervals
+Mode 2: Managed. Only self-perserving decisions taken in the robot, all other decisions taken in the server
+
+I decided I needed to build it using the following three "components":
+
+1) The robot itself
+2) The charger station
+3) The server
+
+Hoping I would be able to build a reliable and accurate short range positioning system I realized that I maybe also had to set up some sort of beacons some time in the future, but one step at a time...
+
+Milestone 1
+==========
+The robot
+---------
+- The robot countinously collects and transmits telemetry to the server
+- The robot can accept and act on commands from the server
+- The robot can move between the different modes based on certain criteria
+
+
+
+
+
+
+
+
+
+My idea was that a LAN placed server, with a lot more computational power than a Pi/Arduino, would receive telemetry gathered by the robot and send commands to the robot and the charger station.
+
+I had a Raspberry Pi and an Arduino, but missed all other parts to be able to build both the robot and charger station, so I decided to start with the software.
+
+As I wanted the server to be able to bouth run autonomously and in server controlled mode, I decided the robot had to have different "run modes" or RMs:
+1) RM0: The robot is stopped.
+2) RM1: The robot is sleeping, though certain events can wake it up. Typically the robot is in RM1 when it's charging.
+3) RM2: Autonomous mode. The robot is randomly running around, following a few basic principles.
+4) RM3: Server controlled mode. Telemetry is sent to and comands are received from the server.
+5) RM5: Reboot mode. The robot is in the process of powering down and booting up again.
+
+To make this possible, I decided to build the robot software based on a few
+ 

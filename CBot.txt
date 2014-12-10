@@ -1,0 +1,362 @@
+
++-----------------------------------+
+|                                   |
+|          The CBot side            |
+|                                   |
++-----------------------------------+
+Movement states
+===============
+Each wheel can be in one of three states: standing still (0), moving forward (+) or moving backward (-). Two wheels in combination gives nine states (ten with the unknown, zero, state):
+
+0: Unknown
+1: Halted, both wheels still, at 0
+2: Both wheels moving forward. Note that one of the wheels may be turning faster than the other and thereby making CBot to turn
+3: Both wheels moving backward. Note that one of the wheels may be turning faster than the other and thereby making CBot to turn
+4: Left wheel still, right wheel turning forward. CBot turning left
+5: Left wheel moving backward, right wheel moving farward. CBot swiveling left
+6: Left wheel moving forward, right wheel standing still. CBot turning right
+7: Left wheel still, right wheel turning backward. CBot turning right
+8: Left wheel turning  backward, right wheel standing still
+9: Left wheel moving farward, right wheel moving backward. CBot swiveling right
+
+     RIGHT
+    +-+-+-+
+    |0|+|-|
+  +-+-+-+-+
+L |0|1|4|7|
+E +-+-+-+-+
+F |+|6|2|9|
+T +-+-+-+-+
+  |-|8|5|3|
+  +-+-+-+-+
+
+Simple movement states
+======================
+"Halted"
+	None of the wheels are turning. Equals to linear moving at zero speed.
+	HALT
+
+"Linear moving"
+	Both wheels are tuning in the same direction and at the same speed. Note that no speed (zero) is considered a valid speed.
+	MOVE_FW_<n> Moving forward at speed <n> where 0 <= n <= 3
+	MOVE_BW_<n> Moving backward at speed <n> where 0 <= n <= 3
+
+"Turning"
+	Both wheels are turning in the same direction but in different speeds. Note that no speed (zero) is considered a valid speed.
+	TURN_FW_<rn>_<ln> Turning forward, either left or right, where the right wheel is moving forward at speed <rn> and the left at speed <ln> where 0 <= rn/ln <= 3 and rn != ln
+	TURN_BW_<rn>_<ln> Turning backwards, either left or right, where the right wheel is moving forward at speed <rn> and the left at speed <ln> where -3 <= rn/ln <= 0 and rn != ln
+
+"Swiveling"
+	One wheel is turning in one direction and the other wheel in the other direction, both at the same speed.
+	SWIV_LEFT_<n> Swiveling left, where the right wheel is moving forward and the left is moving backwards, both at speed <n> where 0 <= n <= 3
+	SWIV_RIGHT_<n> Swiveling right, where the right wheel is moving backwards and the left is moving forward, both at speed <n> where 0 <= n <= 3
+
+
+
+HALT		       		 	(1)
+
+MOVE
+    FW
+      <n> (0 <= n <= 3)			(2)
+    BW
+      <n> (0 <= n <= 3)			(3)
+
+TURN
+    FW					(4)
+      <ln> (0 <= ln <= 3, ln != rn)
+      <rn> (0 <= rn <= 3, rm != ln)
+    BW					(5)
+      <ln> (-3 <= n <= 0, ln != rn)
+      <rn> (-3 <= n <= 0, rn != ln)
+
+SWIV
+    LEFT
+      <n> (0 <= n <= 3)			(6)
+    RIGHT
+      <n> (0 <= n <= 3)			(7)
+
+(1) => (2), (3), (4), (5), (6), (7)
+(2) => (1), (4)
+(3) => (1), (5)
+(4) => (1), (2)
+(5) => (1), (3)
+(6) => (1)
+(7) => (1)
+
+Start-up sequence
+=================
+1) Start listening thread
+2) When AUTH + IP-address comes from server:
+   3) Start sending thread
+   4) Start telemetry trhread
+   5) Start propulsion thread
+
+
+
+
+
+
+
+
+
+
+
+
+Communication modes (CM)
+========================
+0: Unconnected. Not sending nor receiving any data.
+1: Only sending. Telemetry and, possibly, other data is sent to CBot-server (over UDP).
+2: Only receiving. Data (typically commands) are received from CBot-server (over TCP).
+3: Both sending to and receiving data from CBot-server.
+
+CM1
+---
+All transmission (only sending) is done over UDP. Besides telemetry data, certain commands and acks may be sent to CBot server. Commands available for CBot is listed under "Available CBot-server commands".
+
+CM2
+---
+All transmission (only receiving) is done over TCP. The commands available for the CBot server is listed under "Available CBot commands".
+
+RunModes (RM)
+=============
+init: Not really a mode, but prerequisite to enter any other mode
+0: All stop, no recovery.
+1: Active wait, recovery by certain events.
+2: Autonumous mode. All navigation computed bot-side.
+3: Server mode. All navigation computed server-side.
+4: Reserved, not implemented. Equals to RM5.
+5: Reboot. All stop, power down and restart init.
+
+When the CBot software is started, it goes through a number of checks, and then sets CBot in one of the defined RunModes. Under certain circumstances, CBot can switch from one RunMode to another in run-time. When, for instance, CBot docks to a charger it will enter RM1, awaiting the fully-charged-signal. It can also, if connected to the CBot-server, change RunMode on demand from the server or switch to RM0 if it encounters an unrecoverable error.
+
+Invalid combinations of RunModes and ComModes are (RM, CM):
+- (3, 0)
+- (3, 1)
+
+init
+----
+When in init, the following checks are performed in sequence:
+1. SW-check. Checking for, reading and parsing config-file, setting up debug/output log, checking access rights, verify existence and integrity of SW, third party support etc.
+2. HW-check. Enumerating and integrity-checking sensors, verifying motors, servos etc.
+3. ComMode set-up. In this phase CBot tries to enter correct ComMode (either as stated in config-file or default (CM3)). This includes testing for network access, test to connect to CBot-server, including the handshake phase, etc.
+4. Entering determined RunMode. Based on the outcome of the tests in this init phase and on the requested RunMode (either as stated in the config file or default (RM3)), CBot enters one of the defined RunModes.
+
+Execution sequence:
+1. Try open config file. If this fails, exit with error on stdErr.
+2. Try parsing config file (input validation!) and populate variables etc. If this fails, exit with error on stdErr. Error also if DefaultRunMode is set to 3 and DefaultComMode is set to either 0 or 1).
+3. Try opening log file (if requested in config). If this fails, exit with error on stdErr.
+4. If DefaultRunMode is set to 0, 1, 4 or 5 (these can only be switched to in run-time), exit with error in log file [NOTE: should RM1 be accepted if an accepted event is provided in config?]
+5. Run function CheckHW. If that fails with error code, exit with error in log file.
+6. Try starting the telemetry thread and wait for feedback. If error reported, exit with error in log file.
+7. Case DefaultComMode of
+   0. Set com mode to 0. Do nothing.
+   1. Try starting transmission thread and wait for feedback. If error reported, exit with error in log file, else set com mode to 1. 
+   2. Try starting receiver thread and wait for feedback. If error reported, exit with error in log file and over UDP if sender thread is up, else set com mode to 2.
+   3. If both sender and receiver thread is up, set com mode to 3.
+8. If DefaultRunMode is set to 2:
+   a. Try starting AI thread and wait for feedback. If error reported, exit with error in log file, and over UDP if sender thread is up.
+   b. Set run mode to 2.
+9. If DefaultRunMode is set to 3:
+   a. Kill AI thread if it's running.
+   b. Set run mode top 3.
+
+
+RM0
+---
+In this mode CBot takes all systems and functions off-line, frees memory, shuts all HW down, cleans up and exits with no aim to recover. A hard reset i required to restart. A reason may be provided when entering RM0, but it's not required.
+
+
+RM1
+---
+A reason (one of a set of predefined reasons) must allways be provided when entering RM1. In RM1 CBot power down certain systems, functions and HW with the intent to recover to the previous RunMode at a certain signal. Which systems, functions and/or HW that is temporarily disabled, and which signal that has to be presented for CBot to recover depends on the provided reason. Following is a list of pre-defined reasons.
+- Chargeing (Signals that can recover CBot when in RM1 for this reason: "FullyCharged", "ServerRequested", "PowerOff")
+- WaitingToTransmit (Signals that can recover CBot when in RM1 for this reason: "TransmitConnection", "ServerRequested", "PowerOff")
+- WaitingToReceive (Signals that can recover CBot when in RM1 for this reason: "ReceiveConnection", "ServerRequested", "PowerOff")
+- TimedSleep (Signals that can recover CBot when in RM1 for this reason: "TimerUp", "ServerRequested", "PowerOff")
+- RequestedSleep (Signals that can recover CBot when in RM1 for this reason: "TimerUp", "ServerRequested", "PowerOff")
+
+RM2
+---
+Any one of the ComModes are sufficient to enter RM2. In RM2 CBot navigates on its own, making certain decisions based on randomization and using local algorithms for solving problems.
+
+RM3
+---
+At least ComMode 3 is required to enter RM3. CBot receives all commands from server and acts accordingly.
+
+RM4
+---
+This RunMode number is reserved and initially set to RM5.
+
+RM5
+---
+When requiring CBot to reboot, it is set in RM5. This will cause CBot to perform a managed shut down and restart, gracefully taking down all systems, HW, comunications etc., and then reenter init.
+
+
+
+Available CBot commands
+=======================
+Through the server interface (over TCP), the CBot is able to take the following commands. Commands are devided in to groups, depending on the type of command.
+
+
+Movement (commands starting with 100)
+-------------------------------------
+100: Full stop
+101: Spin left. Makes CBot rotate around its own z-axis.
+102: Spin right. Makes CBot rotate around its own z-axis.
+103: Turn left. Makes CBot take a left turn.
+104: Turn right. Makes CBot take a right turn.
+105: Move forward.
+106: Move backwards.
+
+Communication commands (starting with 200)
+------------------------------------------
+200: Set UDP port. This makes the CBot send to another UDP port on the server.
+201: Set parameter. This command sets a new parameter/value pair in the config file. A CBot reboot may be required for the changes to take effect.
+202: Disable sensor. Makes the CBot skip the sensor pointed to. If possible CBot will also power down the sensor (provided that is possible and that it can be powered up without a hard or soft reboot).
+203: Disable telemetry. Makes CBot stop collecting telemetry from the sensor array. CBot will power down all sensors that are possible to power down without having to do a hard or soft reboot to power up again. This command also stops the telemetry thread.
+204: Disable server. Makes CBot to stop listening on TCP for commands. If so requested (by providing an argument to this command), CBot will issue a connectToMe command to CBot server at a certain interval and listen for an incomming connection on TCP for a short time. This makes it possible for the server to shut down TCP communication for a shorter period of time and not disabling it completely.
+205: Goto RM level. CBot gracefully switches to the provided runlevel.
+
+
+CBot threads
+============
+When the CBot software is started, it spawns a number of threads, responsible for different tasks. Following is a listing and short description of theese threads.
+
+Main
+----
+The main thread is the one starting first, when the CBot software is started, and responsible for spawning the other threads, as well as coordinating the different threads when e.g. swithcing between different com modes and/or run modes. Certain commands "locks" the main thread from handling new commands, e.g. if the main thread is busy going through a power down cycle, an incomming command to move or switch to another run mode, or execute an actuator command, will be discarded.
+
+Writes to: sensor_array, error_buffer
+Reads from: main_cmd
+Listens to: main_cmd_event
+
+Telemetry thread (ThreadTelemetry, telemetry_thread)
+-------------
+This thread is not event driven, but continously cycles through the whole array of sensors, collecting all telemetry in to a buffer (telemetry_buffer). At the start of each round, the telemetry thread reads a buffer (sensor_array) to determine which sensors to probe in the upcoming cycle, and in which order to probe the sensors. Collected telemetry is placed in a buffer (telemetry_buffer) and an event is triggered (telemetry_buffer_event) to signal other threads that the buffer has been updated. It also checks the telemetry_cmd for commands coming from other threads.
+
+Writes to: telemetry_buffer
+Reads from: sensor_array, telemetry_cmd
+Listens to: 
+
+Execution sequence:
+1. Init. Grab hold of lock (telemetry_buffer_lock). Go through test cycle and raise error if it fails.
+2. Collect the array of sensors to be probed (sensor_array). This buffer is managed by lock and the thread will wait for the lock if necessary.
+3. Probe all sensors in the array and store telemetry in temporary buffer.
+4. If telemetry_buffer_lock is locked, drop temporary buffer and go back to step 3.
+5. Lock telemetry_buffer_lock.
+6. Copy temporary buffer to telemetry_buffer
+7. Release telemetry_buffer_lock
+8. Trigger telemetry_buffer_event
+9. Check to see if the telemetry_cmd is non-empty. If so:
+   a. Clear telemetry_cmd
+   a. Handle the command accordingly
+10. Else (if telemetry_cmd is empty) then return to 2.
+
+
+Transmission thread (ThreadTransmission)
+-------------------
+This thread sends data to ther CBot server over UDP. This data consists mainly of the telemetry gathered by the telemetry thread, but can also be error info etc. The transmission thread is event driven, only sending after receiving an event to do so.
+
+Writes to:
+Reads from: telemetry_buffer, error_buffer
+Listens to: telemetry_buffer_event, error_buffer_event, transmission_cmd_event
+
+Execution sequence:
+1. Init. Grab hold of locks and events. Go through test cycle and exit with an error if it fails.
+2. Subscribe to events and wait.
+3. When event triggers:
+4. If event is telemetry_buffer_event:
+   a. Wait (if neccessary) for telemetry_buffer_lock to release.
+   b. Lock telemetry_buffer_lock
+   c. Send telemetry_buffer over UDP
+   d. Release telemetry_buffer_lock
+   f. Return to 2.
+5. If event is error_buffer_event
+   a. Wait (if neccessary) for error_buffer_lock to release.
+   b. Lock error_buffer_lock
+   c. Copy error_buffer to temporary buffer (this is done with intent to be able to release the error_buffer_lock as quickly as possible)
+   d. Release telemetry_buffer_lock
+   e. Send temporary buffer over UDP
+   f. Return to 2.
+6. If event is transmission_cmd_event:
+   a. Read transmission_cmd to temporary buffer
+   b. Handle the command accordingly
+   c. Return to 2 (unless cmd is to shutdown)
+
+
+Receiver thread (ThreadReceiver)
+---------------
+This thread acts as a TCP server, listening on the designated TCP port for commands from CBot server. Received commands are placed on the incomming command buffer (main_cmd) to be handled by the main thread.
+
+Writes to: 
+Reads from: 
+Listens to: 
+
+Execution sequence:
+
+
+
+AI thread (ThreadAI)
+---------
+This thread is only used in run mode 2 (autonumous mode). When active it reads collected telemetry data, determines the right actions and puts command on the incomming command buffer (main_cmd).
+
+Writes to: 
+Reads from: 
+Listens to: 
+
+Execution sequence:
+x. If the triggering event is telemetry_buffer_event
+x. If the triggering event is telemetry_buffer_event
+
+
+Propulsion thread (ThreadPropulsion)
+-----------------
+This event driven thread handles propulsion. It listens to events and carries out commands from a queue.
+
+Writes to: 
+Reads from: 
+Listens to: 
+
+Execution sequence:
+
+
+
+
+CBot config-file
+================
+DefaultRunMode (int 0-5). This is the RM CBot will try to enter after init. If any of the checks fail, or if 0 (zero) is set, CBot will enter RM0 after init. Default value is 3.
+SendPort (int). Port number for sending to CBot-server over UDP.
+ReceivePort (int). Port number for listening and receiving from CBot-server.
+ServerIP (IP-address). The IP address on which the CBot-server can be found.
+
+
+
+
+
+
++-----------------------------------+
+|                                   |
+|       The CBot-server side        |
+|                                   |
++-----------------------------------+
+
+CBot-server
+===========
+init: Not really a mode, but a prerequisite to other modes
+wait: Waiting for connection from CBot
+shake: Connecting, hand-shaking, with CBot
+run1: (capable of) receiving telemetry, sending commands on demand (no AI/AP enabled)
+run2: receiving telemetry, sending commands automatically (AI/AP enabled)
+
+
+
+
+
+
+
+
+
+Commands from CBot-server
+=========================
+The following is a list of commands available for the CBot-server, implemented in CBot.
+00 "setRM(RMNumber,[DropServer])". This command switches the CBot to the RunMode defined by RMNumber. Allowed values for RMNumber are 0 through 5. If DropServer is set to true, CBot will drop it's server cookie. DropServer will be ignored by CBot if RMNumber is set to 3.

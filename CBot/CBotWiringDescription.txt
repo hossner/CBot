@@ -1,0 +1,138 @@
+Raspberry Pi (RPi) (BOARD numbering)
+==================
+1 (3.3V)         :	HMC(VCC)
+2 (5V)	     	 :	LDH1(VCC)
+3 (I2C_SDA)  	 :	Ard1(A4)	HMC(SDA)
+4 (5V (?))   	 :
+5 (I2C_SCL)  	 :	Ard1(A5)	HMC(SCL)
+6 (GRND)     	 :	GND
+7 (GPCLK0)   	 :
+8 (UART0_TXD)	 :
+9 (GRND)     	 :
+10 (UART0_RXD)	 :
+11 ()		 :	LDH1(IN1)
+12 (PCM_CLK)	 :
+13 ()		 :	LDH1(IN2)
+14 (GRND)	 :
+15 ()		 :	LDH1(EN3)
+16 ()		 :	LDH1(IN3)
+17 (3.3V)	 :
+18 ()		 :	LDH1(IN4)
+19 (SPI0_MOSI)	 :	StatusLED(AN)
+20 (GRND)	 :
+21 (SPI0_MISO)	 :
+22 ()		 :	LDH1(EN2)
+23 (SPI0_SCLK)	 :
+24 (SPI0_CE0_N)	 :
+25 (GRND)	 :
+26 (SPI0_CE1_N)	 :
+
+Status LED Green (StatusLED)
+================
+AN	   :	RPi(19) [via 220Ohm]
+CATH	   :	GRND
+
+Arduino1 (Ard1) (Managing sensor array, I2C comm.)
+===============
+0	   :
+1	   :
+2	   :
+3	   :
+4	   :
+5	   :
+6	   :
+7	   :
+8	   :
+9	   :
+10	   :
+11	   :
+12	   :
+13	   :
+A0	   :
+A1	   :
+A2	   :
+A3	   :
+A4	   :	RPi(3)		HMC(SDA)
+A5	   :	RPI(5)		HMC(SCL)
+3.3V	   :
+5.0V	   :
+GRND	   :
+
+
+HMC6352 (HMC) (Compass, I2C comm.)
+=============
+GND	   :	GRND
+VCC	   :	RPi(1)
+SDA	   :	RPi(3)		Ard1(A4)
+SCL	   :	RPi(5)		Ard1(A5)
+
+
+L293D Dual H-bridge 1 (LDH1)
+=====================
+GND	   :	GRND
++V	   :	BPM(VCC)
+VCC	   :	RPi(2)
+IN1	   :	RPi(11)
+IN2	   :	RPi(13)
+IN3 	   :	RPi(16)
+IN4	   :	RPi(18)
+EN1	   :	RPi(15)
+EN2	   :	RPi(22)
+MOTOR1_1   :	MOTOR_LEFT(RED)
+MOTOR1_2   :	MOTOR_LEFT(BLACK)
+MOTOR2_1   :	MOTOR_RIGHT(RED)
+MOTOR2_2   :	MOTOR_RIGHT(BLACK)
+
+
+Left motor (MOTOR_LEFT)
+==========
+RED:
+BLACK:
+
+
+Right motor (MOTOR_LEFT)
+==========
+RED:
+BLACK:
+
+
+HC-SR04 (SR04) (Active sonar)
+=======
+Trig:
+Echo:
+Vcc:
+Gnd:
+
+
+MaxSonar EZ1 1 (MSEZ1) (Passive sonar)
+==============
+Gnd:
++5:
+TX:
+RX:
+AN:
+PW:
+BW:
+
+
+IR LED Sensor Array Left (ILSAL)
+========================
+Anode:
+Cathode:
+DLeft:
+DMiddle:
+DRight:
+
+
+IR LED Sensor Array Left (ILSAL)
+========================
+Anode:
+Cathode:
+DLeft:
+DMiddle:
+DRight:
+
+Battery pack Motors (BPM)
+===================
+Vcc (6V)	   :	LDH1(+V)
+GRND 		   :	GRND
